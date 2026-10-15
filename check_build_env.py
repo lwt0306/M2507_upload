@@ -1,4 +1,5 @@
-"""Fail before packaging if the selected Windows Conda toolchain is wrong."""
+"""Fail before installation/packaging if the Windows Conda toolchain is wrong."""
+import argparse
 import importlib.metadata
 import json
 import os
@@ -20,7 +21,7 @@ EXPECTED_PACKAGES = {
 }
 
 
-def main():
+def main(runtime_only=False):
     errors = []
     if sys.platform != "win32":
         errors.append("Windows EXE must be built on Windows; cross-compiling is not supported.")
@@ -32,13 +33,14 @@ def main():
     if not prefix or Path(prefix).resolve() != Path(sys.prefix).resolve():
         errors.append("Activate the dedicated m2507_win7 Conda environment first.")
 
-    for name, wanted in EXPECTED_PACKAGES.items():
-        try:
-            found = importlib.metadata.version(name)
-            if found != wanted:
-                errors.append("{}: expected {}, found {}".format(name, wanted, found))
-        except importlib.metadata.PackageNotFoundError:
-            errors.append("Missing package: " + name)
+    if not runtime_only:
+        for name, wanted in EXPECTED_PACKAGES.items():
+            try:
+                found = importlib.metadata.version(name)
+                if found != wanted:
+                    errors.append("{}: expected {}, found {}".format(name, wanted, found))
+            except importlib.metadata.PackageNotFoundError:
+                errors.append("Missing package: " + name)
 
     # Inspect metadata only; do not dump environment variables or credentials.
     for name, version in (("vs2015_runtime", "14.27.29016"), ("tk", "8.6.10")):
@@ -50,14 +52,16 @@ def main():
     if not errors:
         try:
             import tkinter as tk
-            import serial
-            import serial.tools.list_ports_windows
             root = tk.Tk()
             root.withdraw()
             patchlevel = root.tk.call("info", "patchlevel")
             root.update_idletasks()
             root.destroy()
-            print("Tcl/Tk:", patchlevel, "pyserial:", serial.VERSION)
+            print("Tcl/Tk:", patchlevel)
+            if not runtime_only:
+                import serial
+                import serial.tools.list_ports_windows
+                print("pyserial:", serial.VERSION)
         except Exception as exc:
             errors.append("Tkinter/serial import or GUI initialization failed: " + str(exc))
 
@@ -66,10 +70,15 @@ def main():
             print("ERROR:", error, file=sys.stderr)
         return 1
     print("Build interpreter:", sys.executable)
-    print("Target: Windows {}-bit, Python 3.8.10, PyInstaller 4.10".format(struct.calcsize("P") * 8))
-    print("Preflight passed. Test the EXE on the actual Win7 SP1 target before release.")
+    print("Target: Windows {}-bit, Python 3.8.10".format(struct.calcsize("P") * 8))
+    if runtime_only:
+        print("Runtime preflight passed. Build dependencies may now be installed offline.")
+    else:
+        print("PyInstaller 4.10 preflight passed. Test the EXE on the actual Win7 SP1 target before release.")
     return 0
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--runtime-only", action="store_true", help="Check Python/Conda/Tk before installing build packages")
+    sys.exit(main(runtime_only=parser.parse_args().runtime_only))

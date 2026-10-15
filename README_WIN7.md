@@ -1,5 +1,9 @@
 # M2507 上位机：Windows 7 SP1 64 位修复与 Conda 打包
 
+**如果安装依赖时遇到 `SSLEOFError`：下载最新版完整仓库 ZIP，在现有 Conda 环境中运行
+`install_deps_win7.bat`。仓库已附带 Windows x64 离线 wheel，不再要求 pip 连接 PyPI。**
+具体步骤和错误原因见 [pip TLS 错误解决方法](PIP_TLS_FIX.md)。
+
 ## 1. 截图故障的原因
 
 截图报错发生在 PyInstaller 启动器加载 `python39.dll` 时，Python 源码尚未执行。
@@ -47,13 +51,25 @@ Core0/Core1 定义、长度/CRC 小端格式、分包默认值或发送节流。
 ```bat
 conda create -n m2507_win7 --override-channels -c defaults python=3.8.10 tk=8.6.10 vs2015_runtime=14.27.29016 pip -y
 conda activate m2507_win7
+install_deps_win7.bat
+```
+
+也可用 `conda env create -f environment-win7.yml` 替代第一行创建命令，之后步骤相同。
+如果已有同名环境，请使用一个新的环境名称；不要继续使用原来的 Python 3.9 环境。
+**如果已经按本说明成功创建了 `m2507_win7`，只需激活它并运行离线安装脚本，无需再次创建环境。**
+Conda 的 Python/Tk/VC 环境创建本身仍需要其包缓存或联网；离线 wheel 解决的是环境创建后的 pip 安装。
+离线安装脚本会检查环境、验证全部 wheel 的大小和 SHA256，然后通过 `--no-index --require-hashes`
+安装锁定依赖，并执行 `pip check` 和完整的构建环境检查。
+wheel 共 9 个，约 5.4 MB；来源及官方 PyPI SHA256 保存在 `wheelhouse_win7_x64/manifest.json`。
+
+如果构建机能正常访问 PyPI，也可以使用原有在线安装方式：
+
+```bat
 python -m pip install --only-binary=:all: -r requirements-build-win7.txt
 python -m pip check
 python check_build_env.py
 ```
 
-也可用 `conda env create -f environment-win7.yml` 替代第一行创建命令，之后步骤相同。
-如果已有同名环境，请使用一个新的环境名称；不要继续使用原来的 Python 3.9 环境。
 `check_build_env.py` 会确认解释器、Conda 运行库、打包器和钩子版本，并实际初始化 Tkinter。
 它会报告当前解释器的位数；本次目标应显示 **64-bit**。
 
@@ -110,7 +126,8 @@ Tkinter 在 Python/Conda 中提供，不执行 `pip install tkinter`。
 只运行源码而不打包时，在上述 Python/Tk/VC 环境中安装：
 
 ```bat
-python -m pip install --only-binary=:all: -r requirements-win7.txt
+python verify_wheels.py
+python -m pip --isolated --disable-pip-version-check install --no-index --find-links=wheelhouse_win7_x64 --only-binary=:all: -r requirements-win7.txt
 python M2507_dual_core_ota_scrollable.py
 ```
 
