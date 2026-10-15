@@ -1,0 +1,10 @@
+-r requirements-win7.txt
+# Legacy build toolchain; do not upgrade it for the Win7 release.
+pip==23.3.2
+setuptools==68.2.2
+wheel==0.41.3
+pyinstaller==4.10
+pyinstaller-hooks-contrib==2022.3
+altgraph==0.17.3
+pefile==2023.2.7; sys_platform == "win32"
+pywin32-ctypes==0.2.2; sys_platform == "win32"

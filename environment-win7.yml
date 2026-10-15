@@ -1,0 +1,9 @@
+name: m2507_win7
+channels:
+  - defaults
+dependencies:
+  - python=3.8.10
+  - tk=8.6.10
+  # Prevent the solver from pulling a newer CRT that may require newer Windows.
+  - vs2015_runtime=14.27.29016
+  - pip

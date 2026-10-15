@@ -1,0 +1,2 @@
+# The only third-party runtime dependency. Tkinter is provided by Python/Tk.
+pyserial==3.5
