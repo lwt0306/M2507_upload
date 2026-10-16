@@ -1,17 +1,13 @@
 @echo off
 setlocal
 cd /d "%~dp0"
-set "M2507_LAYOUT=--onedir"
-set "M2507_UI=--windowed"
 set "M2507_MODE=onedir"
 if "%~1"=="" goto args_ok
 if /I "%~1"=="debug" (
-    set "M2507_UI=--console"
     set "M2507_MODE=debug"
     goto args_ok
 )
 if /I "%~1"=="onefile" (
-    set "M2507_LAYOUT=--onefile"
     set "M2507_MODE=onefile"
     goto args_ok
 )
@@ -25,23 +21,13 @@ python -m pip check
 if errorlevel 1 goto failed
 python -m unittest discover -s tests -v
 if errorlevel 1 goto failed
-set "M2507_BITS="
-for /f %%B in ('python -c "import struct; print(struct.calcsize('P') * 8)"') do set "M2507_BITS=%%B"
-if not defined M2507_BITS goto failed
-
-python -m PyInstaller --noconfirm --clean --noupx ^
-    %M2507_LAYOUT% %M2507_UI% ^
-    --name M2507_OTA ^
-    --distpath "dist\win%M2507_BITS%\%M2507_MODE%" ^
-    --workpath "build\win%M2507_BITS%\%M2507_MODE%\work" ^
-    --specpath "build\win%M2507_BITS%\%M2507_MODE%" ^
-    --hidden-import serial.tools.list_ports_windows ^
-    M2507_dual_core_ota_scrollable.py
+python package_win7.py --mode "%M2507_MODE%"
 if errorlevel 1 goto failed
 echo.
-echo Build succeeded: dist\win%M2507_BITS%\%M2507_MODE%
+echo Build and isolated GUI startup check succeeded: dist\win64\%M2507_MODE%
 echo For onedir/debug, copy the WHOLE M2507_OTA directory to the target computer.
-echo The target needs no Conda or Python installation. Verify on Win7 SP1 before release.
+echo Use run_diagnostics.bat next to the EXE if the target computer cannot start it.
+echo Test again on the actual Win7 SP1 target before release.
 exit /b 0
 
 :failed

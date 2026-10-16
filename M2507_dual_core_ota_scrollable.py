@@ -73,6 +73,7 @@ class DualCoreOtaUpgraderApp:
         self._closing = False
         self.worker = None
         self.ui_queue = queue.Queue()
+        self._queue_after_id = None
         self.active_chunk_size = DEFAULT_CHUNK_SIZE
         self._rx_buffer = b""
 
@@ -89,7 +90,7 @@ class DualCoreOtaUpgraderApp:
         self._setup_ui()
         self.refresh_ports()
 
-        self.root.after(50, self._process_ui_queue)
+        self._queue_after_id = self.root.after(50, self._process_ui_queue)
         self.root.protocol("WM_DELETE_WINDOW", self.on_close)
 
     # =========================
@@ -577,7 +578,8 @@ class DualCoreOtaUpgraderApp:
         except queue.Empty:
             pass
 
-        self.root.after(50, self._process_ui_queue)
+        if not self._closing:
+            self._queue_after_id = self.root.after(50, self._process_ui_queue)
 
     def _append_log(self, msg, level="info"):
         self.txt_log.config(state="normal")
@@ -596,7 +598,14 @@ class DualCoreOtaUpgraderApp:
         self.post_log(f"升级目标已选择：{TARGET_NAMES.get(target, '未知目标')}", "info")
 
     def refresh_ports(self):
-        ports = list(serial.tools.list_ports.comports())
+        try:
+            ports = list(serial.tools.list_ports.comports())
+        except Exception as exc:
+            # A broken USB/COM driver must not prevent the GUI from opening.
+            self.cb_ports["values"] = []
+            self.post_log(f"串口枚举失败，请检查驱动后点击刷新：{exc}", "err")
+            self.post_status("串口枚举失败，请检查驱动")
+            return
         values = [p.device for p in ports]
         self.cb_ports["values"] = values
 
@@ -929,6 +938,12 @@ class DualCoreOtaUpgraderApp:
             self.stop_event.set()
 
         self._closing = True
+        if self._queue_after_id is not None:
+            try:
+                self.root.after_cancel(self._queue_after_id)
+            except tk.TclError:
+                pass
+            self._queue_after_id = None
 
         try:
             if self.serial is not None and self.serial.is_open:
@@ -972,7 +987,13 @@ def main():
         try:
             messagebox.showerror("启动失败", f"{exc}\n\n详细日志：{log_path}", parent=root)
         except tk.TclError:
-            pass
+            # If Tk cannot initialize, use a native Windows error dialog instead.
+            try:
+                import m2507_bootstrap
+                m2507_bootstrap.initialize()
+                m2507_bootstrap.report_exception(type(exc), exc, exc.__traceback__)
+            except ImportError:
+                pass
         if root is not None:
             try:
                 root.destroy()

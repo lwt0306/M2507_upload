@@ -4,6 +4,9 @@
 `install_deps_win7.bat`。仓库已附带 Windows x64 离线 wheel，不再要求 pip 连接 PyPI。**
 具体步骤和错误原因见 [pip TLS 错误解决方法](PIP_TLS_FIX.md)。
 
+**如果 EXE 命令行闪一下就退出、主界面不出现，先使用 `run_diagnostics.bat` 保留报错，
+并按 [启动故障说明](STARTUP_TROUBLESHOOTING.md) 重新构建。新版会检查打包后的完整 GUI 是否能启动。**
+
 ## 1. 截图故障的原因
 
 截图报错发生在 PyInstaller 启动器加载 `python39.dll` 时，Python 源码尚未执行。
@@ -90,6 +93,7 @@ build_win7.bat debug
 ```
 
 输出为 `dist\win64\debug\M2507_OTA\M2507_OTA.exe`。
+同目录附带 `run_diagnostics.bat`，双击它可记录输出和退出码并保留命令行窗口。
 
 验证正常后，生成无控制台文件夹版：
 
@@ -112,6 +116,10 @@ build_win7.bat onefile
 还需要目标用户有可写的临时目录。故障排查时优先使用 `debug` / `onedir`。
 
 脚本会先执行环境检查、依赖一致性检查和现有自动化测试，失败即停止。
+打包阶段显式收集同一 Conda 环境的 Tcl/Tk/Python/VC 及所需 libffi，缺失资源即停止。
+打包后在清除 Conda/Python/Tcl 环境影响的子进程中启动 EXE `--self-test`，
+实际创建完整主界面和控件，要求退出码 0 与成功标记，才报告构建成功。
+失败日志保留在 `build\win64\<模式>\`，详细路径见启动故障说明。
 它采用 `--noupx`，不依赖 UPX；也不使用 `--collect-all` 收入整个 Conda 环境。
 如果手工执行 PyInstaller，必须在这个专用环境里使用 `python -m PyInstaller`，
 避免 PATH 中另一个环境的 `pyinstaller.exe` 被调用。
@@ -128,7 +136,7 @@ Tkinter 在 Python/Conda 中提供，不执行 `pip install tkinter`。
 ```bat
 python verify_wheels.py
 python -m pip --isolated --disable-pip-version-check install --no-index --find-links=wheelhouse_win7_x64 --only-binary=:all: -r requirements-win7.txt
-python M2507_dual_core_ota_scrollable.py
+python m2507_launcher.py
 ```
 
 PyInstaller、pefile、hooks、setuptools 等锁定包属于构建工具。

@@ -20,7 +20,10 @@ build_win7.bat debug
 不要只下载 `.py` 文件或复制旧仓库中的几个脚本。
 
 - [pip 安装报 SSLEOFError 的解决步骤](PIP_TLS_FIX.md)
+- [EXE 闪退、主界面不出现的修复与日志获取](STARTUP_TROUBLESHOOTING.md)
 - [完整 Conda 打包、发布及 Win7 运行库排查说明](README_WIN7.md)
 - [测试结果与尚未完成的目标机验收](VALIDATION.md)
 
 目前不提供预编译 Windows EXE；在 Windows 构建后，复制完整的产物文件夹到目标电脑。
+构建脚本会实际启动生成的 EXE 并检查完整 GUI；通过后附带 `run_diagnostics.bat`，
+目标电脑启动失败时使用它保留控制台输出和退出码。

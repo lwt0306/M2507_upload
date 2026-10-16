@@ -221,6 +221,23 @@ class ProtocolTests(unittest.TestCase):
 
 @unittest.skipUnless(sys.platform == 'win32' or os.environ.get('DISPLAY'), 'GUI requires a display (Xvfb on Linux)')
 class GuiTests(unittest.TestCase):
+    def test_serial_enumeration_failure_keeps_the_gui_open(self):
+        root = ota.tk.Tk()
+        root.withdraw()
+        try:
+            with patch.object(ota.serial.tools.list_ports, 'comports', side_effect=OSError('driver failure sentinel')):
+                app = ota.DualCoreOtaUpgraderApp(root)
+            root.update_idletasks()
+            app._process_ui_queue()
+            self.assertTrue(root.winfo_exists())
+            self.assertEqual(app.status_var.get(), '串口枚举失败，请检查驱动')
+            self.assertIn('driver failure sentinel', app.txt_log.get('1.0', 'end'))
+            self.assertEqual(str(app.btn_start['state']), 'disabled')
+        finally:
+            for callback in root.tk.call('after', 'info'):
+                root.after_cancel(callback)
+            root.destroy()
+
     def test_real_tk_load_connect_upgrade_and_close(self):
         root = ota.tk.Tk()
         root.withdraw()
